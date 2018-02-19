@@ -10,14 +10,18 @@
 # =================================================================================================
 from tkinter import *
 from tkinter import ttk
+from tkinter import filedialog
 from clipboard import clipboard
 from cliplist import cliplist
 import transforms
 import time
+import json
+import os
 
 # This is to make touchpad scrolling smoother.  Set this to .05 or 0 if using an actual mouse.
 # Need to try and find a way of unifying both models.
 CLIP_LIST_SCROLL_DELAY = .1
+INITIAL_FILE_SAVE_DIRECTORY = "C:\\Users\\joe.hessling\\Documents\\AccountManagement"
 
 # handles writing to the boxes
 class statusWriter():
@@ -28,7 +32,8 @@ class statusWriter():
       self.textBoxHandle = textBox
 
    def write(self, status, clearText=False, prepend=False, showEnd=True):
-      self.textBoxHandle.insert(END, status + "\n")
+      entry = time.strftime('%Y-%m-%d %H:%M:%S> ', time.localtime()) + status
+      self.textBoxHandle.insert(END, entry + "\n")
       if clearText:
          self.clear()
       elif showEnd:
@@ -58,9 +63,9 @@ class dockWindow:
       self.root.bind('<Control-m>', self.addFromClipboard)
       self.root.bind('<Control-u>', self.bumpSelected)
       self.root.bind_all('<Control-MouseWheel>', self.scrollClipList)
-      # self.root.bind_all('<Shift-MouseWheel>', self.shiftMouseWheel)
       self.root.bind('<Control-k>', self.popClipboardStackByIndex)
       self.root.bind('<Control-space>', self.pickFromStack)
+      self.root.bind('<Control-d>', self.saveToFile)
 
       # tkinter frames, labels, buttons, and text boxes with scrollbars and writer handlers below
       # can't decide if this is ugly or not...  consider moving some of this to functions/routines
@@ -84,13 +89,11 @@ class dockWindow:
       self.mainClipboard.bind('<<ListboxSelect>>', self.setDisplayedCommentFromSelected)
       self.mainClipboard.bind('<Up>', self.setDisplayedCommentFromUpArrow)
       self.mainClipboard.bind('<Down>', self.setDisplayedCommentFromDownArrow)
-      self.mainClipboard.bind('<Shift-MouseWheel>', self.shiftMouseWheel)
-      self.mainClipboard.bind('<Control-MouseWheel>', self.scrollClipList)
-
+      self.root.bind('<Control-l>', self.dumpToArchiveFileCallback)
 
       self.commentEntryBox = Entry(self.clipboardListFrame, relief=RAISED)
       self.commentEntryBox.delete(1, END)
-      # self.commentEntryBox.insert(END, "(blank)")
+      self.commentEntryBox.insert(END, "(blank)")
       self.commentEntryBox.pack(fill='x', anchor='s')
       self.commentEntryBox.bind('<Return>', self.setCommentFromEntry)
       self.commentEntryBox.bind('<FocusIn>', self.setCommentFocus)
@@ -124,6 +127,7 @@ class dockWindow:
       self.delimiterEntryBox.insert(END, "^n")
       # self.delimiterEntryBox.grid(row=0, column=1, sticky=(N, S, E, W))
       self.delimiterEntryBox.pack(side=LEFT, anchor='center', fill='both', expand=1)
+      self.delimiterEntryBox.bind('<FocusIn>', self.selectDelimiterEntryAll)
 
       # entry box to choose separator (r-value of find-replace)
       self.separatorLabel = Label(self.entryFrame, text="Separator")
@@ -134,6 +138,7 @@ class dockWindow:
       self.separatorEntryBox.insert(END, ",")
       # self.separatorEntryBox.grid(row=0, column=3, sticky=(N, S, E, W))
       self.separatorEntryBox.pack(side=LEFT, anchor='center', fill='both', expand=1)
+      self.separatorEntryBox.bind('<FocusIn>', self.selectSeparatorEntryAll)
 
       # wrapper if transform is sandwhiched
       self.wrapperLabel = Label(self.entryFrame, text="Wrapper")
@@ -144,6 +149,8 @@ class dockWindow:
       self.wrapperEntryBox.insert(END, "'")
       # self.wrapperEntryBox.grid(row=0, column=5, sticky=(N, S, E, W))
       self.wrapperEntryBox.pack(side=LEFT, anchor='center', fill='both', expand=1)
+      self.wrapperEntryBox.bind('<FocusIn>', self.selectWrapperEntryAll)
+
 
       # Buttons below!
       self.pushbotton = ttk.Button(self.buttonFrame, text="Add From Clipboard", command=self.addFromClipboard)
@@ -170,25 +177,39 @@ class dockWindow:
       self.clearButton.grid(column=0, row=4, sticky=(N, S, W, E), columnspan=2)
       self.clearButton.bind('<Return>', self.clearClipboard)
 
-      self.pickStackButton = ttk.Button(self.buttonFrame, text="Pick From Dock", command=self.pickFromStack)
-      self.pickStackButton.grid(column=0, row=5, sticky=(N, S, W, E), columnspan=2)
-      self.pickStackButton.bind('<Return>', self.pickFromStack)
+      # self.pickStackButton = ttk.Button(self.buttonFrame, text="Pick From Dock", command=self.pickFromStack)
+      # self.pickStackButton.grid(column=0, row=5, sticky=(N, S, W, E), columnspan=2)
+      # self.pickStackButton.bind('<Return>', self.pickFromStack)
+
+      self.saveToFileButton = ttk.Button(self.buttonFrame, text="Save to File", command=self.saveToFile)
+      self.saveToFileButton.grid(column=0, row=5, sticky=(N, S, W, E), columnspan=2)
+      self.saveToFileButton.bind('<Return>', self.saveToFile)
 
       self.clearStatusButton = ttk.Button(self.buttonFrame, text="Clear Log", command=self.clearStatusDisplay)
       self.clearStatusButton.grid(column=0, row=6, sticky=(N, S, W, E), columnspan=2)
       self.clearStatusButton.bind('<Return>', self.clearStatusDisplay)
 
+      self.loadFromArchiveFile()
+
       # vestigial - reminder of alternate convention:
       #             > set widget text elements to StringVar, will auto-update with StringVar
       self.messageText = StringVar()
 
+   def selectDelimiterEntryAll(self, *args):
+      self.delimiterEntryBox.selection_range(0, END)
+
+   def selectSeparatorEntryAll(self, *args):
+      self.separatorEntryBox.selection_range(0, END)
+
+   def selectWrapperEntryAll(self, *args):
+      self.wrapperEntryBox.selection_range(0, END)
+
    # clipboard list scroll handler
    def scrollClipList(self, event):
       self.mainClipboard.focus_set()
-      # thisTime = time.clock()
-      # clipListScrollDelta = thisTime - self.clipListLastScrollTime
-      # if clipListScrollDelta > 1 or ((clipListScrollDelta - int(clipListScrollDelta)) > CLIP_LIST_SCROLL_DELAY):
-      if True:
+      thisTime = time.clock()
+      clipListScrollDelta = thisTime - self.clipListLastScrollTime
+      if clipListScrollDelta > 1 or ((clipListScrollDelta - int(clipListScrollDelta)) > CLIP_LIST_SCROLL_DELAY):
          currentSelectionList = self.mainClipboard.curselection()
          if len(currentSelectionList) == 0:
             currentSelection = 0
@@ -201,13 +222,8 @@ class dockWindow:
          elif currentSelection >= 0:
             self.mainClipboard.selection_set(max(currentSelection - 1, 0))
             self.mainClipboard.activate(max(currentSelection - 1, 0))
-         # self.clipListLastScrollTime = thisTime
+         self.clipListLastScrollTime = thisTime
          self.setDisplayedCommentFromSelected(event)
-         self.mainClipboard.see(self.mainClipboard.index(ACTIVE))
-         return("break")
-
-   def shiftMouseWheel(self, event):
-      return("break")
 
    def bumpSelected(self, event):
       selected = self.mainClipboard.index(ACTIVE)
@@ -222,20 +238,30 @@ class dockWindow:
          self.mainClipboard.selection_set(min(selected + 1, self.mainClipboard.size() - 1))
          self.mainClipboard.activate(min(selected + 1, self.mainClipboard.size() - 1))
       self.setDisplayedCommentFromSelected(event)
-      self.mainClipboard.see(self.mainClipboard.index(ACTIVE))
 
 
    # add to the stack
    def addClip(self, item):
-      if not self.mainClipboard.isItemIn(item):
+      i = self.mainClipboard.isItemIn(item)
+      print("i is ", i)
+      if i < 0:
          self.root.clipboard_clear()
          self.mainClipboard.addItem(item)
          self.root.clipboard_append(self.mainClipboard.getCurrentItem().text)
+      elif i > 0:
+         print("Item ", item, "is in, at ", i)
+         self.root.clipboard_clear()
+         self.mainClipboard.indexPop(i)
+         self.root.clipboard_append(self.mainClipboard.getCurrentItem().text)
+      self.mainClipboard.dumpToArchiveFile("archive.txt")
 
    def setCommentFromEntry(self, *args):
-      selected = (self.mainClipboard.getStackSize() - 1) - self.mainClipboard.index(ACTIVE)
+      selected = self.mainClipboard.getIndex() - self.mainClipboard.index(ACTIVE)
       self.mainClipboard.setComment(self.commentEntryBox.get(), selected)
+      commentMessage = "Commented: '" + self.commentEntryBox.get() + "' >> " + self.mainClipboard.get(selected)
+      self.statusMessageTextBoxWriter.write(commentMessage)
       self.mainClipboard.focus_set()
+      self.mainClipboard.dumpToArchiveFile("archive.txt")
 
    def setCommentFocus(self, *args):
       self.commentEntryBox.config(relief=SUNKEN)
@@ -244,18 +270,23 @@ class dockWindow:
       self.commentEntryBox.config(relief=RAISED)
 
    def setDisplayedCommentFromSelected(self, *args):
-      selected = (self.mainClipboard.getStackSize() - 1) - self.mainClipboard.curselection()[0]
-      self.commentEntryBox.delete(0, END)
-      self.commentEntryBox.insert(END, self.mainClipboard.getComment(selected))
+      try:
+         selected = (self.mainClipboard.getStackSize() - 1) - self.mainClipboard.curselection()[0]
+         self.commentEntryBox.delete(0, END)
+         self.commentEntryBox.insert(END, self.mainClipboard.getComment(selected))
+      except IndexError:
+         pass
+      except TclError:
+         pass
 
    def setDisplayedCommentFromUpArrow(self, event):
-      self.mainClipboard.selection_clear(0, self.mainClipboard.getStackSize() - 1)
+      self.mainClipboard.selection_clear(0, self.mainClipboard.getIndex())
       self.mainClipboard.selection_set(max(self.mainClipboard.index(ACTIVE) - 1, 0))
       self.setDisplayedCommentFromSelected(event)
 
    def setDisplayedCommentFromDownArrow(self, event):
-      self.mainClipboard.selection_clear(0, self.mainClipboard.getStackSize() - 1)
-      self.mainClipboard.selection_set(min(self.mainClipboard.index(ACTIVE) + 1, self.mainClipboard.getStackSize() - 1))
+      self.mainClipboard.selection_clear(0, self.mainClipboard.getIndex())
+      self.mainClipboard.selection_set(min(self.mainClipboard.index(ACTIVE) + 1, self.mainClipboard.getIndex()))
       self.setDisplayedCommentFromSelected(event)
 
    # grab from system clipboard and add to the stack
@@ -263,40 +294,44 @@ class dockWindow:
       try:
          toAdd = str(self.root.clipboard_get())
          self.addClip(toAdd)
-         self.mainClipboard.selection_clear(0, self.mainClipboard.size() - 1)
+         self.mainClipboard.selection_clear(0, self.mainClipboard.getIndex())
          self.mainClipboard.selection_set(0)
          self.mainClipboard.activate(0)
          self.statusMessageTextBoxWriter.write("Docked: " + toAdd)
       except TclError:
-         print("Error in adding from clipboard...")
-         # throw(TclError)
          self.statusMessageTextBoxWriter.write("Error in adding from clipboard...")
+
+   def addClipWithItem(self, item, comment="Blank"):
+      self.addClip
 
    # pick from top of the stack, add to system clipboard
    def pickFromStack(self, *args):
       self.root.clipboard_clear()
+      current = self.mainClipboard.getCurrentItem()
       if self.mainClipboard.getCurrentItem() != None:
-         self.root.clipboard_append(self.mainClipboard.getCurrentItem().text)
-         self.statusMessageTextBoxWriter.write("Picked from stack: " + self.mainClipboard.getCurrentItem().text + "  <<  " + self.mainClipboard.getCurrentItem().comment)
-         self.mainClipboard.selection_clear(0, self.mainClipboard.size() - 1)
+         self.root.clipboard_append(current.text)
+         self.statusMessageTextBoxWriter.write("Picked from dock: '" + current.comment + "' >> " + current.text)
+         self.mainClipboard.selection_clear(0, self.mainClipboard.getIndex())
          self.mainClipboard.selection_set(0)
          self.mainClipboard.activate(0)
          self.setDisplayedCommentFromSelected()
+         print("set here")
       else:
-         self.statusMessageTextBoxWriter.write("Stack is empty...")
+         self.statusMessageTextBoxWriter.write("Dock is empty...")
 
    # pop top item from clipboard stack, add next to system clipboard.
    # cycle enabled will re-insert popped item to the bottom of the stack.
    def popClipboardStack(self, *args, cycle=False):
       if cycle:
          poppedItem = self.mainClipboard.softPop()
+         self.mainClipboard.dumpToArchiveFile("archive.txt")
       else:
          poppedItem = self.mainClipboard.popStack()
       if poppedItem != None and len(poppedItem) > 0:
-         self.statusMessageTextBoxWriter.write('\tPopped: ' + poppedItem)
+         self.statusMessageTextBoxWriter.write('Popped: ' + poppedItem)
          self.pickFromStack(*args)
       else:
-         self.statusMessageTextBoxWriter.write("Can't pop, stack is empty...")
+         self.statusMessageTextBoxWriter.write("Can't pop, Dock is empty...")
 
    # pop the clipboard stack with cycle enabled
    def softPopCllipboardStack(self, *args):
@@ -306,6 +341,7 @@ class dockWindow:
    def popClipboardStackByIndex(self, *args):
       self.mainClipboard.activePop()
       self.pickFromStack(*args)
+      self.mainClipboard.dumpToArchiveFile("archive.txt")
 
    # clear the lower log/status display box
    def clearStatusDisplay(self, *args):
@@ -322,7 +358,6 @@ class dockWindow:
       try:
          toTransform = str(self.root.clipboard_get())
       except TclError:
-         print("Error in executing newlineToComma transform, stack probably empty...")
          self.statusMessageTextBoxWriter.write("Error in executing newlineToComma transform, stack probably empty...")
 
       self.addClip(transforms.sep(toTransform))
@@ -333,8 +368,7 @@ class dockWindow:
       try:
          toTransform = str(self.root.clipboard_get())
       except TclError:
-         print("Error in executing transform, stack probably empty...")
-         self.statusMessageTextBoxWriter.write("Error in executing transform, stack probably empty...")
+         self.statusMessageTextBoxWriter.write("Error in executing transform, Dock probably empty...")
 
       separator = self.getSeparator()
       delimiter = self.getDelimiter()
@@ -346,8 +380,7 @@ class dockWindow:
       try:
          toTransform = str(self.root.clipboard_get())
       except TclError:
-         print("Error in executing transform, stack probably empty...")
-         self.statusMessageTextBoxWriter.write("Error in executing transform, stack probably empty...")
+         self.statusMessageTextBoxWriter.write("Error in executing transform, Dock probably empty...")
 
       separator = self.getSeparator()
       delimiter = self.getDelimiter()
@@ -386,3 +419,35 @@ class dockWindow:
    # the go-button
    def drawWindow(self):
       self.root.mainloop()
+
+   def dumpToArchiveFileCallback(self, event):
+      self.mainClipboard.dumpToArchiveFile("archive.txt")
+
+   def loadFromArchiveFile(self, filename="archive.txt"):
+      try:
+         with open(filename) as archiveFileHandle:
+            archiveContents = json.load(archiveFileHandle)
+
+         for a in archiveContents:
+            self.mainClipboard.addItemWithComment(a['text'], a['comment'])
+            print(a['text'], a['comment'])
+
+         self.statusMessageTextBoxWriter.write("Successfully loaded saved Dock from archives...")
+      except FileNotFoundError:
+         pass
+      except json.decoder.JSONDecodeError:
+         pass
+
+   def saveToFile(self, *args):
+      try:
+         toAdd = str(self.root.clipboard_get())
+         filename = filedialog.asksaveasfilename(initialdir=INITIAL_FILE_SAVE_DIRECTORY, title="Please select filename and location...")
+         # print(filename)
+         with open(filename, "w+") as copyFileHandle:
+            copyFileHandle.write(toAdd)
+         self.statusMessageTextBoxWriter.write("Successfully wrote clipboard contents to '" + filename + "'!")
+         os.startfile(filename)
+
+      except TclError:
+         self.statusMessageTextBoxWriter.write("Error in adding from clipboard...")
+

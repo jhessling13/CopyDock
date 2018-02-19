@@ -4,6 +4,8 @@
 # Clipboard object with a stack of items.
 # =================================================================================================
 from clip import clip
+import json
+
 class clipboard:
    def __init__(self):
       self.__stack_index__ = -1
@@ -13,26 +15,27 @@ class clipboard:
       self.__comment_stack__ = []
 
    def getIndex(self):
+      self.__stack_index__ = self.getStackSize() - 1
       return self.__stack_index__
 
    def getStackSize(self):
-      return self.getIndex() + 1
+      return len(self.__stack__)
 
    def getCurrentItem(self):
+      #return self.__stack__[self.__stack_index__]
       return self.__current_item__
 
    def isItemIn(self, item):
-      # return item in self.__stack__
+      i = 0
       for a in self.__stack__:
          if item == a.text:
-            return True
-      return False
-
-   def toggleCycle(self, enabled):
-      self.__cycle__ = enabled
+            return self.getStackSize() - i
+         i += 1
+      return -1
 
    def _syncItem(self, indexMod=0):
-      self.__stack_index__ += indexMod
+      #self.__stack_index__ += indexMod
+      self.__stack_index__ = self.getStackSize() - 1
       if self.__stack_index__ >= 0:
          self.__current_item__ = self.__stack__[self.__stack_index__]
       else:
@@ -44,30 +47,24 @@ class clipboard:
       else:
          return None
 
-   def addItem(self, item, prepend=False):
-      if prepend:
-         self.__stack__.insert(0, clip(item, ""))
-         # self.__comment_stack__.insert(0, "(blank)")
-      else:
-         self.__stack__.append(clip(item, ""))
-         # self.__comment_stack__.append(("(blank)"))
-      self._syncItem(1)
+   def addItem(self, item):
+      self.__stack__.append(clip(item))
+      self._syncItem()
+
+   def addItemWithComment(self, item, comment):
+      self.__stack__.append(clip(item, comment))
+      self._syncItem()
 
    def setComment(self, comment, index):
-      if index >= 0 and self.__stack_index__ >= index:
+      if index >= 0 and self.getStackSize() >= index:
          self.__stack__[index].setComment(comment)
-         print("comment added: ", self.__stack__[index].comment, " << ", self.__stack__[index].text)
 
    def popStack(self):
       if self.__stack_index__ >= 0:
          poppedItem = self.__stack__.pop()
-         if self.__cycle__:
-            self.__stack__.insert(0, poppedItem)
-            self._syncItem()
-         else:
-            self._syncItem(-1)
+         self._syncItem()
          return poppedItem
-      return self.__current_item__
+      return self.getCurrentItem()
 
    def softPop(self):
       if self.__stack_index__ >= 0:
@@ -94,3 +91,13 @@ class clipboard:
       self.__stack__ = []
       self.__stack_index__ = -1
       self._syncItem()
+
+   def dumpToArchiveFile(self, filename="archive.txt"):
+      archiveFileHandle = open(filename, "w")
+      dictStack = []
+
+      for a in self.__stack__:
+         dictStack.append({'text':a.text, 'comment':a.comment})
+
+      json.dump(dictStack, archiveFileHandle, indent=1)
+      archiveFileHandle.close()

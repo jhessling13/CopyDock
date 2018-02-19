@@ -1,0 +1,14 @@
+[
+ {
+  "text": "archives...",
+  "comment": "(blank)"
+ },
+ {
+  "text": "clipboard...",
+  "comment": "(blank)"
+ },
+ {
+  "text": " ",
+  "comment": "(blank)"
+ }
+]

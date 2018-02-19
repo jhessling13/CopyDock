@@ -6,7 +6,7 @@
 # 
 # Some ugly code below, could use some refactoring.
 # =================================================================================================
-from clipboard_b import clipboard
+from clipboard import clipboard
 from tkinter import *
 from tkinter import ttk
 import json
@@ -20,20 +20,14 @@ class cliplist(clipboard, Listbox):
       # Listbox.pack(topFrame, expand=True, fill='both')
 
    #extend clipboard class function to Listbox element...
-   def addItem(self, item, prepend=False):
-      clipboard.addItem(self, item, prepend)
-      if prepend:
-         Listbox.insert(self, END, item.replace("\n", "\\n"))
-      else:
-         Listbox.insert(self, 0, item.replace("\n", "\\n"))
+   def addItem(self, item):
+      clipboard.addItem(self, item)
+      Listbox.insert(self, 0, item.replace("\n", "\\n"))
       self._setColors()
 
-   def addItemWithComment(self, item, comment="Blank", prepend=False):
-      clipboard.addItemWithComment(self, item, comment, prepend)
-      if prepend:
-         Listbox.insert(self, END, item.replace("\n", "\\n"))
-      else:
-         Listbox.insert(self, 0, item.replace("\n", "\\n"))
+   def addItemWithComment(self, item, comment="Blank"):
+      clipboard.addItemWithComment(self, item, comment)
+      Listbox.insert(self, 0, item.replace("\n", "\\n"))
       self._setColors()
       print("Added this: ", item)
 

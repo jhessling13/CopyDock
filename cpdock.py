@@ -429,7 +429,7 @@ class dockWindow:
             archiveContents = json.load(archiveFileHandle)
 
          for a in archiveContents:
-            self.mainClipboard.addItemWithComment(a['text'], a['comment'])
+            self.mainClipboard.addItem(a['text'], a['comment'])
             print(a['text'], a['comment'])
 
          self.statusMessageTextBoxWriter.write("Successfully loaded saved Dock from archives...")

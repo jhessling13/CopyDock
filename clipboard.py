@@ -22,7 +22,6 @@ class clipboard:
       return len(self.__stack__)
 
    def getCurrentItem(self):
-      #return self.__stack__[self.__stack_index__]
       return self.__current_item__
 
    def isItemIn(self, item):
@@ -34,7 +33,6 @@ class clipboard:
       return -1
 
    def _syncItem(self, indexMod=0):
-      #self.__stack_index__ += indexMod
       self.__stack_index__ = self.getStackSize() - 1
       if self.__stack_index__ >= 0:
          self.__current_item__ = self.__stack__[self.__stack_index__]
@@ -47,11 +45,7 @@ class clipboard:
       else:
          return None
 
-   def addItem(self, item):
-      self.__stack__.append(clip(item))
-      self._syncItem()
-
-   def addItemWithComment(self, item, comment):
+   def addItem(self, item, comment=""):
       self.__stack__.append(clip(item, comment))
       self._syncItem()
 
@@ -93,11 +87,10 @@ class clipboard:
       self._syncItem()
 
    def dumpToArchiveFile(self, filename="archive.txt"):
-      archiveFileHandle = open(filename, "w")
-      dictStack = []
+      with open(filename, "w") as archiveFileHandle:
+         dictStack = []
 
-      for a in self.__stack__:
-         dictStack.append({'text':a.text, 'comment':a.comment})
+         for a in self.__stack__:
+            dictStack.append({'text':a.text, 'comment':a.comment})
 
-      json.dump(dictStack, archiveFileHandle, indent=1)
-      archiveFileHandle.close()
+         json.dump(dictStack, archiveFileHandle, indent=1)

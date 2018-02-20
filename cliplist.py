@@ -20,16 +20,10 @@ class cliplist(clipboard, Listbox):
       # Listbox.pack(topFrame, expand=True, fill='both')
 
    #extend clipboard class function to Listbox element...
-   def addItem(self, item):
-      clipboard.addItem(self, item)
+   def addItem(self, item, comment=""):
+      clipboard.addItem(self, item, comment)
       Listbox.insert(self, 0, item.replace("\n", "\\n"))
       self._setColors()
-
-   def addItemWithComment(self, item, comment="Blank"):
-      clipboard.addItemWithComment(self, item, comment)
-      Listbox.insert(self, 0, item.replace("\n", "\\n"))
-      self._setColors()
-      print("Added this: ", item)
 
    #extend clipboard class function to Listbox element...
    def popStack(self):

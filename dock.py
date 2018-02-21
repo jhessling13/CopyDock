@@ -19,23 +19,47 @@ class dock:
       return len(self.__stack__)
 
    def peek(self):
-      return self.__stack__[len(self.__stack__) - 1]
+      if not self.isEmpty():
+         return self.__stack__[len(self.__stack__) - 1]
+      else:
+         return None
 
    def addTextClip(self, text, comment=""):
-      self.__stack__.append(clip(text, comment))
+      self.__stack__.append(textClip(text, comment))
+
+   def getClipText(self, index):
+      if index >= 0 and self.size() - 1 >= index:
+         return self.__stack__[index].text
+
+   def setComment(self, comment, index):
+      if index >= 0 and self.size() - 1 >= index:
+         self.__stack__[index].setComment(comment)
+   
+   def getComment(self, index=-1):
+      if index >= 0 and self.size() - 1 >= index:
+         return self.__stack__[index].comment
 
    def hardPop(self):
-      return self.__stack__.pop()
+      if not self.isEmpty():
+         return self.__stack__.pop()
+      else:
+         return None
 
    def softPop(self):
-      x = self.__stack__.pop()
-      self.__stack__.insert(0, x)
-      return self.peek()
+      if not self.isEmpty():
+         x = self.__stack__.pop()
+         self.__stack__.insert(0, x)
+         return self.peek()
+      else:
+         return None
 
    def indexPop(self, index):
-      x = self.__stack__.pop(index)
-      self.__stack__.append(x)
-      return self.peek()
+      if not self.isEmpty():
+         x = self.__stack__.pop(index)
+         self.__stack__.append(x)
+         return self.peek()
+      else:
+         return None
 
    def indexDelete(self, index):
       return self.__stack__.pop(index)
@@ -43,8 +67,19 @@ class dock:
    def clearDock(self):
       self.__stack__ = []
 
+   def isEmpty(self):
+      return self.size() <= 0
+
+   def isItemIn(self, item):
+      i = 0
+      for a in self.__stack__:
+         if item == a.text:
+            return self.size() - i
+         i += 1
+      return -1
+
    def dumpToArchiveFile(self, filename="archive.txt"):
-      with archiveFileHandle as open(filename, "w"):
+      with open(filename, "w") as archiveFileHandle:
          dictStack = []
 
          for a in self.__stack__:

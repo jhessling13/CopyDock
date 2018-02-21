@@ -11,7 +11,8 @@
 from tkinter import *
 from tkinter import ttk
 from tkinter import filedialog
-from clipboard import clipboard
+#from clipboard import clipboard
+from dock import dock, textClip
 from cliplist import cliplist
 import transforms
 import time
@@ -247,18 +248,18 @@ class dockWindow:
       if i < 0:
          self.root.clipboard_clear()
          self.mainClipboard.addItem(item)
-         self.root.clipboard_append(self.mainClipboard.getCurrentItem().text)
+         self.root.clipboard_append(self.mainClipboard.peek().text)
       elif i > 0:
          print("Item ", item, "is in, at ", i)
          self.root.clipboard_clear()
          self.mainClipboard.indexPop(i)
-         self.root.clipboard_append(self.mainClipboard.getCurrentItem().text)
+         self.root.clipboard_append(self.mainClipboard.peek().text)
       self.mainClipboard.dumpToArchiveFile("archive.txt")
 
    def setCommentFromEntry(self, *args):
-      selected = self.mainClipboard.getIndex() - self.mainClipboard.index(ACTIVE)
+      selected = self.mainClipboard.size() - 1 - self.mainClipboard.index(ACTIVE)
       self.mainClipboard.setComment(self.commentEntryBox.get(), selected)
-      commentMessage = "Commented: '" + self.commentEntryBox.get() + "' >> " + self.mainClipboard.get(selected)
+      commentMessage = "Commented: '" + self.commentEntryBox.get() + "' >> " + self.mainClipboard.getClipText(selected)
       self.statusMessageTextBoxWriter.write(commentMessage)
       self.mainClipboard.focus_set()
       self.mainClipboard.dumpToArchiveFile("archive.txt")
@@ -271,7 +272,7 @@ class dockWindow:
 
    def setDisplayedCommentFromSelected(self, *args):
       try:
-         selected = (self.mainClipboard.getStackSize() - 1) - self.mainClipboard.curselection()[0]
+         selected = (self.mainClipboard.size() - 1) - self.mainClipboard.curselection()[0]
          self.commentEntryBox.delete(0, END)
          self.commentEntryBox.insert(END, self.mainClipboard.getComment(selected))
       except IndexError:
@@ -280,13 +281,13 @@ class dockWindow:
          pass
 
    def setDisplayedCommentFromUpArrow(self, event):
-      self.mainClipboard.selection_clear(0, self.mainClipboard.getIndex())
+      self.mainClipboard.selection_clear(0, self.mainClipboard.size() - 1)
       self.mainClipboard.selection_set(max(self.mainClipboard.index(ACTIVE) - 1, 0))
       self.setDisplayedCommentFromSelected(event)
 
    def setDisplayedCommentFromDownArrow(self, event):
-      self.mainClipboard.selection_clear(0, self.mainClipboard.getIndex())
-      self.mainClipboard.selection_set(min(self.mainClipboard.index(ACTIVE) + 1, self.mainClipboard.getIndex()))
+      self.mainClipboard.selection_clear(0, self.mainClipboard.size() - 1)
+      self.mainClipboard.selection_set(min(self.mainClipboard.index(ACTIVE) + 1, self.mainClipboard.size() - 1))
       self.setDisplayedCommentFromSelected(event)
 
    # grab from system clipboard and add to the stack
@@ -294,7 +295,7 @@ class dockWindow:
       try:
          toAdd = str(self.root.clipboard_get())
          self.addClip(toAdd)
-         self.mainClipboard.selection_clear(0, self.mainClipboard.getIndex())
+         self.mainClipboard.selection_clear(0, self.mainClipboard.size() - 1)
          self.mainClipboard.selection_set(0)
          self.mainClipboard.activate(0)
          self.statusMessageTextBoxWriter.write("Docked: " + toAdd)
@@ -307,11 +308,11 @@ class dockWindow:
    # pick from top of the stack, add to system clipboard
    def pickFromStack(self, *args):
       self.root.clipboard_clear()
-      current = self.mainClipboard.getCurrentItem()
-      if self.mainClipboard.getCurrentItem() != None:
+      current = self.mainClipboard.peek()
+      if self.mainClipboard.peek() != None:
          self.root.clipboard_append(current.text)
          self.statusMessageTextBoxWriter.write("Picked from dock: '" + current.comment + "' >> " + current.text)
-         self.mainClipboard.selection_clear(0, self.mainClipboard.getIndex())
+         self.mainClipboard.selection_clear(0, self.mainClipboard.size() - 1)
          self.mainClipboard.selection_set(0)
          self.mainClipboard.activate(0)
          self.setDisplayedCommentFromSelected()
@@ -369,6 +370,7 @@ class dockWindow:
          toTransform = str(self.root.clipboard_get())
       except TclError:
          self.statusMessageTextBoxWriter.write("Error in executing transform, Dock probably empty...")
+         return
 
       separator = self.getSeparator()
       delimiter = self.getDelimiter()
@@ -381,6 +383,7 @@ class dockWindow:
          toTransform = str(self.root.clipboard_get())
       except TclError:
          self.statusMessageTextBoxWriter.write("Error in executing transform, Dock probably empty...")
+         return
 
       separator = self.getSeparator()
       delimiter = self.getDelimiter()
@@ -414,7 +417,7 @@ class dockWindow:
 
    # def syncComments(self):
    #    self.commentEntryBox.delete(0, END)
-   #    self.commentEntryBox.insert(END, self.mainClipboard.getCurrentItem().comment)
+   #    self.commentEntryBox.insert(END, self.mainClipboard.peek().comment)
 
    # the go-button
    def drawWindow(self):

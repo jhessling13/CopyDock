@@ -6,14 +6,14 @@
 # 
 # Some ugly code below, could use some refactoring.
 # =================================================================================================
-from clipboard import clipboard
+from dock import dock, textClip
 from tkinter import *
 from tkinter import ttk
 import json
 
-class cliplist(clipboard, Listbox):
+class cliplist(dock, Listbox):
    def __init__(self, topFrame, scrollbar):
-      clipboard.__init__(self)
+      dock.__init__(self)
       self.cliplist = Scrollbar(topFrame)
       Listbox.__init__(self, topFrame, yscrollcommand=scrollbar.set, selectmode=SINGLE)
       # self.comment = "(blank)"
@@ -21,13 +21,13 @@ class cliplist(clipboard, Listbox):
 
    #extend clipboard class function to Listbox element...
    def addItem(self, item, comment=""):
-      clipboard.addItem(self, item, comment)
+      dock.addTextClip(self, item, comment)
       Listbox.insert(self, 0, item.replace("\n", "\\n"))
       self._setColors()
 
    #extend clipboard class function to Listbox element...
    def popStack(self):
-      clipboard.popStack(self)
+      dock.hardPop(self)
       listpop = Listbox.get(self, 0)
       Listbox.delete(self, 0)
       self._setColors()
@@ -35,7 +35,7 @@ class cliplist(clipboard, Listbox):
 
    #extend clipboard class function to Listbox element...
    def softPop(self):
-      clipboard.softPop(self)
+      dock.softPop(self)
       listpop = Listbox.get(self, 0)
       Listbox.delete(self, 0)
       if len(listpop) > 0:
@@ -49,7 +49,7 @@ class cliplist(clipboard, Listbox):
       listLength = len(Listbox.get(self, 0, END))
       index = Listbox.index(self, ACTIVE)
       altIndex = (listLength - 1) - index
-      clipboard.indexPop(self, altIndex)
+      dock.indexPop(self, altIndex)
       if index >= 0 and index <= listLength:
          poppedItem = Listbox.get(self, index)
          Listbox.delete(self, index)
@@ -60,7 +60,7 @@ class cliplist(clipboard, Listbox):
       listLength = len(Listbox.get(self, 0, END))
       # index = Listbox.index(self, ACTIVE)
       altIndex = (listLength - 1) - index
-      clipboard.indexPop(self, altIndex)
+      dock.indexPop(self, altIndex)
       if index >= 0 and index <= listLength:
          poppedItem = Listbox.get(self, index)
          Listbox.delete(self, index)
@@ -69,7 +69,7 @@ class cliplist(clipboard, Listbox):
 
    #extend clipboard class function to Listbox element...
    def clearStack(self):
-      clipboard.clearStack(self)
+      dock.clearDock(self)
       Listbox.delete(self, 0, END)
 
    # loop through listbox items and set the off-set colors and static highlight color

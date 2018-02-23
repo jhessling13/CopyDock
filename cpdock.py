@@ -1,18 +1,13 @@
 # =================================================================================================
-# Copy Dock - Bravo1 
+# Copy Dock
 #
 # clipboard stack manager with some simple text transforms.
 # 
-# updates from Alpha: 
-#  - replace box-style stack display to tk 'Listbox', single-line
-#  - double-click stack items to pop/add to sys clipboard
-#  - add some color?
 # =================================================================================================
 from tkinter import *
 from tkinter import ttk
 from tkinter import filedialog
-#from clipboard import clipboard
-from dock import dock, textClip
+from dock import dock
 from cliplist import cliplist
 import transforms
 import time
@@ -22,7 +17,7 @@ import os
 # This is to make touchpad scrolling smoother.  Set this to .05 or 0 if using an actual mouse.
 # Need to try and find a way of unifying both models.
 CLIP_LIST_SCROLL_DELAY = .1
-INITIAL_FILE_SAVE_DIRECTORY = "C:\\Users\\joe.hessling\\Documents\\AccountManagement"
+INITIAL_FILE_SAVE_DIRECTORY = "FILES"
 
 # handles writing to the boxes
 class statusWriter():
@@ -46,7 +41,6 @@ class statusWriter():
 
 class dockWindow:
    def __init__(self):
-      # constant-like defs for later
       self.delimiter = '\n'
       self.wrapper = "'"
       self.separator = ','
@@ -60,16 +54,12 @@ class dockWindow:
       self.root.columnconfigure(1, weight=1)
 
       # Key bindings, mainly for AutoHotkey integration.
-      # Consider adding a MUCH larger variety for all functions, then publish an ICD for added user customization via the ahk script.
       self.root.bind('<Control-m>', self.addFromClipboard)
       self.root.bind('<Control-u>', self.bumpSelected)
       self.root.bind_all('<Control-MouseWheel>', self.scrollClipList)
       self.root.bind('<Control-k>', self.popClipboardStackByIndex)
       self.root.bind('<Control-space>', self.pickFromStack)
       self.root.bind('<Control-d>', self.saveToFile)
-
-      # tkinter frames, labels, buttons, and text boxes with scrollbars and writer handlers below
-      # can't decide if this is ugly or not...  consider moving some of this to functions/routines
 
       # top and bottom frames
       self.topFrame = Frame(self.root, borderwidth=2)
@@ -121,34 +111,28 @@ class dockWindow:
 
       # entry box to choose delimiter (l-value of find-replace)
       self.delimiterLabel = Label(self.entryFrame, text="Delimiter")
-      # self.delimiterLabel.grid(row=0, column=0, sticky=(N, S, E, W))
       self.delimiterLabel.pack(side=LEFT, anchor='center', fill='both', expand=1)
       self.delimiterEntryBox = Entry(self.entryFrame, width=5)
       self.delimiterEntryBox.delete(1, END)
       self.delimiterEntryBox.insert(END, "^n")
-      # self.delimiterEntryBox.grid(row=0, column=1, sticky=(N, S, E, W))
       self.delimiterEntryBox.pack(side=LEFT, anchor='center', fill='both', expand=1)
       self.delimiterEntryBox.bind('<FocusIn>', self.selectDelimiterEntryAll)
 
       # entry box to choose separator (r-value of find-replace)
       self.separatorLabel = Label(self.entryFrame, text="Separator")
-      # self.separatorLabel.grid(row=0, column=2, sticky=(N, S, E, W))
       self.separatorLabel.pack(side=LEFT, anchor='center', fill='both', expand=1)
       self.separatorEntryBox = Entry(self.entryFrame, width=5)
       self.separatorEntryBox.delete(1, END)
       self.separatorEntryBox.insert(END, ",")
-      # self.separatorEntryBox.grid(row=0, column=3, sticky=(N, S, E, W))
       self.separatorEntryBox.pack(side=LEFT, anchor='center', fill='both', expand=1)
       self.separatorEntryBox.bind('<FocusIn>', self.selectSeparatorEntryAll)
 
       # wrapper if transform is sandwhiched
       self.wrapperLabel = Label(self.entryFrame, text="Wrapper")
-      # self.wrapperLabel.grid(row=0, column=4, sticky=(N, S, E, W))
       self.wrapperLabel.pack(side=LEFT, anchor='center', fill='both', expand=1)
       self.wrapperEntryBox = Entry(self.entryFrame, width=5)
       self.wrapperEntryBox.delete(1, END)
       self.wrapperEntryBox.insert(END, "'")
-      # self.wrapperEntryBox.grid(row=0, column=5, sticky=(N, S, E, W))
       self.wrapperEntryBox.pack(side=LEFT, anchor='center', fill='both', expand=1)
       self.wrapperEntryBox.bind('<FocusIn>', self.selectWrapperEntryAll)
 
@@ -178,10 +162,6 @@ class dockWindow:
       self.clearButton.grid(column=0, row=4, sticky=(N, S, W, E), columnspan=2)
       self.clearButton.bind('<Return>', self.clearClipboard)
 
-      # self.pickStackButton = ttk.Button(self.buttonFrame, text="Pick From Dock", command=self.pickFromStack)
-      # self.pickStackButton.grid(column=0, row=5, sticky=(N, S, W, E), columnspan=2)
-      # self.pickStackButton.bind('<Return>', self.pickFromStack)
-
       self.saveToFileButton = ttk.Button(self.buttonFrame, text="Save to File", command=self.saveToFile)
       self.saveToFileButton.grid(column=0, row=5, sticky=(N, S, W, E), columnspan=2)
       self.saveToFileButton.bind('<Return>', self.saveToFile)
@@ -192,10 +172,6 @@ class dockWindow:
 
       self.loadFromArchiveFile()
 
-      # vestigial - reminder of alternate convention:
-      #             > set widget text elements to StringVar, will auto-update with StringVar
-      self.messageText = StringVar()
-
    def selectDelimiterEntryAll(self, *args):
       self.delimiterEntryBox.selection_range(0, END)
 
@@ -205,7 +181,7 @@ class dockWindow:
    def selectWrapperEntryAll(self, *args):
       self.wrapperEntryBox.selection_range(0, END)
 
-   # clipboard list scroll handler
+   # dock list scroll handler
    def scrollClipList(self, event):
       self.mainClipboard.focus_set()
       thisTime = time.clock()
@@ -240,17 +216,14 @@ class dockWindow:
          self.mainClipboard.activate(min(selected + 1, self.mainClipboard.size() - 1))
       self.setDisplayedCommentFromSelected(event)
 
-
    # add to the stack
    def addClip(self, item):
       i = self.mainClipboard.isItemIn(item)
-      print("i is ", i)
       if i < 0:
          self.root.clipboard_clear()
          self.mainClipboard.addItem(item)
          self.root.clipboard_append(self.mainClipboard.peek().text)
       elif i > 0:
-         print("Item ", item, "is in, at ", i)
          self.root.clipboard_clear()
          self.mainClipboard.indexPop(i)
          self.root.clipboard_append(self.mainClipboard.peek().text)
@@ -316,7 +289,6 @@ class dockWindow:
          self.mainClipboard.selection_set(0)
          self.mainClipboard.activate(0)
          self.setDisplayedCommentFromSelected()
-         print("set here")
       else:
          self.statusMessageTextBoxWriter.write("Dock is empty...")
 
@@ -325,9 +297,9 @@ class dockWindow:
    def popClipboardStack(self, *args, cycle=False):
       if cycle:
          poppedItem = self.mainClipboard.softPop()
-         self.mainClipboard.dumpToArchiveFile("archive.txt")
       else:
          poppedItem = self.mainClipboard.popStack()
+         self.mainClipboard.dumpToArchiveFile("archive.txt")
       if poppedItem != None and len(poppedItem) > 0:
          self.statusMessageTextBoxWriter.write('Popped: ' + poppedItem)
          self.pickFromStack(*args)
@@ -342,7 +314,6 @@ class dockWindow:
    def popClipboardStackByIndex(self, *args):
       self.mainClipboard.activePop()
       self.pickFromStack(*args)
-      self.mainClipboard.dumpToArchiveFile("archive.txt")
 
    # clear the lower log/status display box
    def clearStatusDisplay(self, *args):
@@ -353,16 +324,7 @@ class dockWindow:
       self.mainClipboard.clearStack()
       self.root.clipboard_clear()
       self.statusMessageTextBoxWriter.write("Clipoard is cleared...")
-
-   # no longer used, outdated
-   def newlineToComma(self, *args):
-      try:
-         toTransform = str(self.root.clipboard_get())
-      except TclError:
-         self.statusMessageTextBoxWriter.write("Error in executing newlineToComma transform, stack probably empty...")
-
-      self.addClip(transforms.sep(toTransform))
-      self.statusMessageTextBoxWriter.write("Newline to comma transform applied...")
+      self.mainClipboard.dumpToArchiveFile("archive.txt")
 
    # grab delimiter and separator from boxes, find/replace
    def delimiterToSeparator(self, *args):
@@ -375,7 +337,7 @@ class dockWindow:
       separator = self.getSeparator()
       delimiter = self.getDelimiter()
       self.addClip(transforms.sep(toTransform, delimiter, separator))
-      self.statusMessageTextBoxWriter.write("Delimiter to Separator transform applied...")
+      self.statusMessageTextBoxWriter.write("Transform applied...")
 
    # do delimiterToSeparator, wrap it with wrapper from box
    def delimiterToSeparatorWrapped(self, *args):
@@ -389,7 +351,7 @@ class dockWindow:
       delimiter = self.getDelimiter()
       wrapper = self.getWrapper()
       self.addClip(transforms.wrapSep(toTransform, delimiter, separator, wrapper))
-      self.statusMessageTextBoxWriter.write("Delimiter to Separator transform applied...")
+      self.statusMessageTextBoxWriter.write("Wrapped transform applied...")
 
    # grab delimiter from the entry box
    def getDelimiter(self):
@@ -415,10 +377,6 @@ class dockWindow:
          wrapper = self.wrapper
       return wrapper
 
-   # def syncComments(self):
-   #    self.commentEntryBox.delete(0, END)
-   #    self.commentEntryBox.insert(END, self.mainClipboard.peek().comment)
-
    # the go-button
    def drawWindow(self):
       self.root.mainloop()
@@ -433,7 +391,6 @@ class dockWindow:
 
          for a in archiveContents:
             self.mainClipboard.addItem(a['text'], a['comment'])
-            print(a['text'], a['comment'])
 
          self.statusMessageTextBoxWriter.write("Successfully loaded saved Dock from archives...")
       except FileNotFoundError:
@@ -445,7 +402,6 @@ class dockWindow:
       try:
          toAdd = str(self.root.clipboard_get())
          filename = filedialog.asksaveasfilename(initialdir=INITIAL_FILE_SAVE_DIRECTORY, title="Please select filename and location...")
-         # print(filename)
          with open(filename, "w+") as copyFileHandle:
             copyFileHandle.write(toAdd)
          self.statusMessageTextBoxWriter.write("Successfully wrote clipboard contents to '" + filename + "'!")

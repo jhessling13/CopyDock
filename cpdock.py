@@ -2,11 +2,6 @@
 # Copy Dock - Bravo1 
 #
 # clipboard stack manager with some simple text transforms.
-# 
-# updates from Alpha: 
-#  - replace box-style stack display to tk 'Listbox', single-line
-#  - double-click stack items to pop/add to sys clipboard
-#  - add some color?
 # =================================================================================================
 from tkinter import *
 from tkinter import ttk
@@ -120,34 +115,28 @@ class dockWindow:
 
       # entry box to choose delimiter (l-value of find-replace)
       self.delimiterLabel = Label(self.entryFrame, text="Delimiter")
-      # self.delimiterLabel.grid(row=0, column=0, sticky=(N, S, E, W))
       self.delimiterLabel.pack(side=LEFT, anchor='center', fill='both', expand=1)
       self.delimiterEntryBox = Entry(self.entryFrame, width=5)
       self.delimiterEntryBox.delete(1, END)
       self.delimiterEntryBox.insert(END, "^n")
-      # self.delimiterEntryBox.grid(row=0, column=1, sticky=(N, S, E, W))
       self.delimiterEntryBox.pack(side=LEFT, anchor='center', fill='both', expand=1)
       self.delimiterEntryBox.bind('<FocusIn>', self.selectDelimiterEntryAll)
 
       # entry box to choose separator (r-value of find-replace)
       self.separatorLabel = Label(self.entryFrame, text="Separator")
-      # self.separatorLabel.grid(row=0, column=2, sticky=(N, S, E, W))
       self.separatorLabel.pack(side=LEFT, anchor='center', fill='both', expand=1)
       self.separatorEntryBox = Entry(self.entryFrame, width=5)
       self.separatorEntryBox.delete(1, END)
       self.separatorEntryBox.insert(END, ",")
-      # self.separatorEntryBox.grid(row=0, column=3, sticky=(N, S, E, W))
       self.separatorEntryBox.pack(side=LEFT, anchor='center', fill='both', expand=1)
       self.separatorEntryBox.bind('<FocusIn>', self.selectSeparatorEntryAll)
 
       # wrapper if transform is sandwhiched
       self.wrapperLabel = Label(self.entryFrame, text="Wrapper")
-      # self.wrapperLabel.grid(row=0, column=4, sticky=(N, S, E, W))
       self.wrapperLabel.pack(side=LEFT, anchor='center', fill='both', expand=1)
       self.wrapperEntryBox = Entry(self.entryFrame, width=5)
       self.wrapperEntryBox.delete(1, END)
       self.wrapperEntryBox.insert(END, "'")
-      # self.wrapperEntryBox.grid(row=0, column=5, sticky=(N, S, E, W))
       self.wrapperEntryBox.pack(side=LEFT, anchor='center', fill='both', expand=1)
       self.wrapperEntryBox.bind('<FocusIn>', self.selectWrapperEntryAll)
 
@@ -177,10 +166,6 @@ class dockWindow:
       self.clearButton.grid(column=0, row=4, sticky=(N, S, W, E), columnspan=2)
       self.clearButton.bind('<Return>', self.clearClipboard)
 
-      # self.pickStackButton = ttk.Button(self.buttonFrame, text="Pick From Dock", command=self.pickFromStack)
-      # self.pickStackButton.grid(column=0, row=5, sticky=(N, S, W, E), columnspan=2)
-      # self.pickStackButton.bind('<Return>', self.pickFromStack)
-
       self.saveToFileButton = ttk.Button(self.buttonFrame, text="Save to File", command=self.saveToFile)
       self.saveToFileButton.grid(column=0, row=5, sticky=(N, S, W, E), columnspan=2)
       self.saveToFileButton.bind('<Return>', self.saveToFile)
@@ -193,7 +178,7 @@ class dockWindow:
 
       # vestigial - reminder of alternate convention:
       #             > set widget text elements to StringVar, will auto-update with StringVar
-      self.messageText = StringVar()
+      #self.messageText = StringVar()
 
    def selectDelimiterEntryAll(self, *args):
       self.delimiterEntryBox.selection_range(0, END)
@@ -411,10 +396,6 @@ class dockWindow:
       if wrapper == None:
          wrapper = self.wrapper
       return wrapper
-
-   # def syncComments(self):
-   #    self.commentEntryBox.delete(0, END)
-   #    self.commentEntryBox.insert(END, self.mainClipboard.getCurrentItem().comment)
 
    # the go-button
    def drawWindow(self):

@@ -1,10 +1,10 @@
 [
  {
-  "text": "archives...",
+  "text": "clipboard...",
   "comment": "(blank)"
  },
  {
-  "text": "clipboard...",
+  "text": "archives...",
   "comment": "(blank)"
  },
  {

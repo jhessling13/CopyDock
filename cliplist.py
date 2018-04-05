@@ -16,16 +16,14 @@ class cliplist(clipboard, Listbox):
       clipboard.__init__(self)
       self.cliplist = Scrollbar(topFrame)
       Listbox.__init__(self, topFrame, yscrollcommand=scrollbar.set, selectmode=SINGLE)
-      # self.comment = "(blank)"
-      # Listbox.pack(topFrame, expand=True, fill='both')
 
-   #extend clipboard class function to Listbox element...
+   #Add a clip to the dock
    def addItem(self, item, comment=""):
       clipboard.addItem(self, item, comment)
       Listbox.insert(self, 0, item.replace("\n", "\\n"))
       self._setColors()
 
-   #extend clipboard class function to Listbox element...
+   #Remove item from top of stack/dock
    def popStack(self):
       clipboard.popStack(self)
       listpop = Listbox.get(self, 0)
@@ -33,7 +31,7 @@ class cliplist(clipboard, Listbox):
       self._setColors()
       return listpop
 
-   #extend clipboard class function to Listbox element...
+   #Perform a pop, but replace item at the back of the stack/dock
    def softPop(self):
       clipboard.softPop(self)
       listpop = Listbox.get(self, 0)
@@ -44,7 +42,18 @@ class cliplist(clipboard, Listbox):
          return listpop
       return None
 
-   #extend clipboard class function to Listbox element...
+   #Perform the pop by a given index
+   def indexPop(self, index):
+      listLength = len(Listbox.get(self, 0, END))
+      altIndex = (listLength - 1) - index
+      clipboard.indexPop(self, altIndex)
+      if index >= 0 and index <= listLength:
+         poppedItem = Listbox.get(self, index)
+         Listbox.delete(self, index)
+         Listbox.insert(self, 0, poppedItem)
+      self._setColors()
+
+   #Perform indexPop by the current active item in the UI
    def activePop(self):
       listLength = len(Listbox.get(self, 0, END))
       index = Listbox.index(self, ACTIVE)
@@ -56,18 +65,7 @@ class cliplist(clipboard, Listbox):
          Listbox.insert(self, 0, poppedItem)
       self._setColors()
 
-   def indexPop(self, index):
-      listLength = len(Listbox.get(self, 0, END))
-      # index = Listbox.index(self, ACTIVE)
-      altIndex = (listLength - 1) - index
-      clipboard.indexPop(self, altIndex)
-      if index >= 0 and index <= listLength:
-         poppedItem = Listbox.get(self, index)
-         Listbox.delete(self, index)
-         Listbox.insert(self, 0, poppedItem)
-      self._setColors()
-
-   #extend clipboard class function to Listbox element...
+   #dump everything
    def clearStack(self):
       clipboard.clearStack(self)
       Listbox.delete(self, 0, END)

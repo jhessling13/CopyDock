@@ -1,14 +1,14 @@
 [
  {
-  "text": "clipboard...",
+  "text": "'clipboard...'",
+  "comment": ""
+ },
+ {
+  "text": " ",
   "comment": "(blank)"
  },
  {
   "text": "archives...",
-  "comment": "(blank)"
- },
- {
-  "text": " ",
   "comment": "(blank)"
  }
 ]

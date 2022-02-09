@@ -21,3 +21,8 @@ def fixPattern(ditto):
    elif ditto == "^t":
       ditto = '\t'
    return ditto
+
+def getPassword():
+   return "XXXXXXXXX"
+
+# TODO - Add a transform here to pull out values from the FxE for PW Troubleshooter, connect to a button somewhere....

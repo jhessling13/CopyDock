@@ -2,8 +2,9 @@
 # Copy Dock - Bravo1 
 #
 # clipboard stack manager with some simple text transforms.
-# 
-# updates from Alpha: 
+#
+# JHDXPPWORD="DumpsterFire13."
+# updates from Alpha:
 #  - replace box-style stack display to tk 'Listbox', single-line
 #  - double-click stack items to pop/add to sys clipboard
 #  - add some color?
@@ -17,11 +18,12 @@ import transforms
 import time
 import json
 import os
+import cx_Oracle
 
 # This is to make touchpad scrolling smoother.  Set this to .05 or 0 if using an actual mouse.
 # Need to try and find a way of unifying both models.
 CLIP_LIST_SCROLL_DELAY = .1
-INITIAL_FILE_SAVE_DIRECTORY = "C:\\Users\\joe.hessling\\Documents\\AccountManagement"
+INITIAL_FILE_SAVE_DIRECTORY = "C:\\Users\\jhessling\\Documents"
 
 # handles writing to the boxes
 class statusWriter():
@@ -50,7 +52,7 @@ class dockWindow:
       self.wrapper = "'"
       self.separator = ','
 
-      self.clipListLastScrollTime = time.clock()
+      self.clipListLastScrollTime = time.perf_counter()
 
       # main tkinter element
       self.root = Tk()
@@ -173,9 +175,9 @@ class dockWindow:
       self.button2.grid(column=1, row=2, sticky=(N, S))
       self.button2.bind('<Return>', self.delimiterToSeparatorWrapped)
 
-      self.clearButton = ttk.Button(self.buttonFrame, text="Clear the Dock", command=self.clearClipboard)
+      self.clearButton = ttk.Button(self.buttonFrame, text="Clear the Dock", command=self.dxpDBTest2)
       self.clearButton.grid(column=0, row=4, sticky=(N, S, W, E), columnspan=2)
-      self.clearButton.bind('<Return>', self.clearClipboard)
+      self.clearButton.bind('<Return>', self.dxpDBTest2)
 
       # self.pickStackButton = ttk.Button(self.buttonFrame, text="Pick From Dock", command=self.pickFromStack)
       # self.pickStackButton.grid(column=0, row=5, sticky=(N, S, W, E), columnspan=2)
@@ -349,9 +351,39 @@ class dockWindow:
 
    # clear the system clipboard, the clipboard stack, and clipboard display box
    def clearClipboard(self, *args):
-      self.mainClipboard.clearStack()
-      self.root.clipboard_clear()
-      self.statusMessageTextBoxWriter.write("Clipoard is cleared...")
+      # self.mainClipboard.clearStack()
+      # self.root.clipboard_clear()
+      self.statusMessageTextBoxWriter.write("Function deprecated.  For safety...")
+
+   def dxpDBTest1(self, *args):
+      # Below block is for a SPIKE to investigate extending database operations into the CopyDock.  ~JH
+      self.statusMessageTextBoxWriter.write("DXP FX DB Test begin...")
+      dsn = cx_Oracle.makedsn("dxpdb01u.liaison.prod", 1522, service_name="dxpuat")
+      lib_dir = "C:\\Program Files\\Oracle\\instantclient_19_14\\"
+      cx_Oracle.init_oracle_client(lib_dir=lib_dir)
+      connection = cx_Oracle.connect(user="jhessling", password=transforms.getPassword(), dsn=dsn, encoding="UTF-8")
+      cursor = connection.cursor()
+
+      sql = """SELECT * FROM FXDXP.FX_MSG_PROPS WHERE MSG_ID LIKE 'UB35090779'"""
+      cursor.execute(sql)
+      for row in cursor:
+         self.statusMessageTextBoxWriter.write(str(row))
+      # Above block is for a SPIKE to investigate extending database operations into the CopyDock.  ~JH
+
+   def dxpDBTest2(self, *args):
+      msgID = str(self.root.clipboard_get())
+
+      self.statusMessageTextBoxWriter.write("DXP FX DB Test begin..." + msgID)
+      dsn = cx_Oracle.makedsn("dxpdb01u.liaison.prod", 1522, service_name="dxpuat")
+      lib_dir = "C:\\Program Files\\Oracle\\instantclient_19_14\\"
+      cx_Oracle.init_oracle_client(lib_dir=lib_dir)
+      connection = cx_Oracle.connect(user="jhessling", password=transforms.getPassword(), dsn=dsn, encoding="UTF-8")
+      cursor = connection.cursor()
+
+      sql = """SELECT * FROM FXDXP.FX_MSG_PROPS WHERE MSG_ID LIKE :query_msgid"""
+      cursor.execute(sql, query_msgid=msgID)
+      for row in cursor:
+         self.statusMessageTextBoxWriter.write(str(row))
 
    # no longer used, outdated
    def newlineToComma(self, *args):

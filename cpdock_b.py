@@ -3,7 +3,6 @@
 #
 # clipboard stack manager with some simple text transforms.
 #
-# JHDXPPWORD="DumpsterFire13."
 # updates from Alpha:
 #  - replace box-style stack display to tk 'Listbox', single-line
 #  - double-click stack items to pop/add to sys clipboard
@@ -18,7 +17,7 @@ import transforms
 import time
 import json
 import os
-import cx_Oracle
+# import cx_Oracle
 
 # This is to make touchpad scrolling smoother.  Set this to .05 or 0 if using an actual mouse.
 # Need to try and find a way of unifying both models.
